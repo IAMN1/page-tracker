@@ -27,6 +27,19 @@ RUN python -m pip install . -c constraints.txt && \
     python -m bandit -r src/ --quiet && \
     python -m pip wheel --wheel-dir dist/ . -c constraints.txt
 
+FROM python:3.13-slim
+
+RUN apt-get update && \
+    apt-get upgrade -y
+
+RUN useradd --create-home customuser
+USER customuser
+WORKDIR /home/customuser
+
+ENV VIRTUALENV=/home/customuser/venv
+RUN python3 -m venv $VIRTUALENV
+ENV PATH="$VIRTUALENV/bin:$PATH"
+
 COPY --from=builder /home/customuser/dist/page_tracker*.whl /home/customuser
 
 RUN python -m pip install --upgrade pip setuptools && \
