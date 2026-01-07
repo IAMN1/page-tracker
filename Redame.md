@@ -1,4 +1,5 @@
-## Увстановка зависемостей
+## Работа с приложениями через терминал и docker 
+### Увстановка зависимостей
 
 ```
 python -m pip install --editable ".[dev]"
@@ -6,24 +7,21 @@ python -m pip freeze --exclude-editable > constraints.txt
 ```
 
 ---
-
-## Запуск конетейнеров Docker
+### Запуск конетейнеров Docker
 
 ```
 docker start redis-server
 ```
 
 ---
-
-## Запуск flask приложения
+### Запуск flask приложения
 
 ```
 flask --app page_tracker.app run
 ```
 
 ---
-
-## Тесты
+### Тесты
 
 - Пример запуска тестов на распределенных серверах
 ```
@@ -33,10 +31,8 @@ python -m pytest -v ./tests/e2e/ \
 ```
 
 ---
-
-## Статический анализ кода
-
-### проверка на ошибки
+### Статический анализ кода
+#### проверка на ошибки
 - black:
 ```
 python -m black ./src --check
@@ -52,7 +48,7 @@ python -m isort ./src --check
 python -m flake8 ./src
 ```
 
-### исправление найденных ошибок
+#### исправление найденных ошибок
 
 - black:
 ```
@@ -69,22 +65,71 @@ python -m isort ./src
 python -m flake8 ./src
 ```
 
-### Оценка кода
+#### Оценка кода
 
 - pylint:
 ```
 python -m pylint ./src
 ```
 
-### Проверка кода на уязвимости
+#### Проверка кода на уязвимости
 
 - bandit:
 ```
 python -m bandit -r ./src
 ```
+---
+### Сборка докер образа приложения Flask
 
-## Сборка докер образа приложения Flask
+- с вервсионированием хэша-коммита в git
+```
+docker build -t page-tracker:$(git rev-parse --short HEAD) .
+```
 
+### Запуск контенеризированого приложения Flask
 ```
-docker build -t page-tracker .
+docker run -p 5000:5000 --name web-service page-tracker:a265dd6
 ```
+
+---
+### Создание сети docker-network
+```
+docker network create page-tracker-network
+```
+
+---
+### Создаение volume для redis-данных
+```
+docker volume create redis-volume
+```
+
+---
+### Запуск redis-контейнера
+```
+docker run -d \
+            -v redis-volume:/data \
+            --network page-tracker-network \
+            --name redis-service \
+            redis:latest
+```
+
+---
+### Запуск контенеризированого приложения Flask
+```
+docker run -p 5000:5000 --name web-service page-tracker:a265dd6
+```
+
+### запуск контенеризированного приложения flask с указанием сети и redis
+```
+docker run -d \
+            -p 5000:5000 \
+            -e REDIS_URL=redis://redis-service:6379 \
+            --network page-tracker-network \
+            --name web-service \
+            page-tracker:a265dd6
+```
+
+---
+## Работа с приложениями через docker-compose
+
+
