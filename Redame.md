@@ -131,5 +131,71 @@ docker run -d \
 
 ---
 ## Работа с приложениями через docker-compose
+### запуск контейнеров с помощью docker compose
+```
+docker compose up -d
+```
+
+---
+## Сквозное тестирование сервисов
+
+- Вариант 1 - тестирование с помощью локально:
+```
+python -m pytest web/tests/e2e/ \
+        --flask-url http://localhost:5000 \
+        --redis-url redis://localhost:6379
+```
+`Важно, чтобы все сервисы пробрасывали порты на localhost!`
+
+- Вариант 2 - сквозное тесирование с помощью профилированного сервиса
+
+`в docker-compose.yml добавляем сервис:`
+```
+...
+test-service:
+    profiles:
+      - testing
+    build:
+      context: ./web
+      dockerfile: Dockerfile.dev
+    environment:
+      REDIS_URL: "redis://redis-service:6379"
+      FLASK_URL: "http://web-service:5000"
+    networks:
+      - backend-network
+    depends_on:
+      - redis-service
+      - web-service
+    command: >
+      sh -c 'python -m pytest tests/e2e/ -vv
+      --redis-url $$REDIS_URL
+      --flask-url $$FLASK_URL'
+
+...
+```
+`Тогда для тестирования нужно запустить его вместе с остальными сервисами, с помощью команды:`
+```
+docker compose --profile testing up -d
+```
+`После чего проверяем работу test-service по логам:`
+```
+docker compose logs test-service
+```
+`Пример вывода логов:`
+```
+test-service-1  | ============================= test session starts ==============================
+test-service-1  | platform linux -- Python 3.13.11, pytest-9.0.2, pluggy-1.6.0 -- /home/customuser/venv/bin/python
+test-service-1  | cachedir: .pytest_cache
+test-service-1  | rootdir: /home/customuser
+test-service-1  | configfile: pyproject.toml
+test-service-1  | plugins: timeout-2.4.0
+test-service-1  | collecting ... collected 1 item
+test-service-1  | 
+test-service-1  | tests/e2e/test_app_redis_http.py::test_should_update_redis PASSED        [100%]
+test-service-1  | 
+test-service-1  | ============================== 1 passed in 0.13s ===============================
+```
+
+---
 
 
